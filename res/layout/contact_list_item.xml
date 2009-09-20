@@ -1,0 +1,86 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="?android:attr/listPreferredItemHeight"
+    android:padding="6dip" >
+
+
+	<ImageView
+       android:id="@+id/callButton"
+
+       android:layout_height="50dip"
+       android:layout_width="50dip"
+      
+       android:layout_alignParentTop="true"
+       android:layout_alignParentBottom="true"
+       android:layout_alignParentRight="true"
+       android:layout_marginLeft="6dip"
+       
+       android:layout_marginTop="5dip" 
+       
+       />
+
+	<com.bisbe.contacts.ContactsContentLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	    android:layout_width="fill_parent"
+	    android:layout_height="fill_parent"
+	    android:layout_alignParentLeft="true"
+	    android:id="@+id/row_content"
+	    android:layout_toLeftOf="@id/callButton"
+	    
+		android:clickable="true"
+		android:focusable="true"
+
+
+	    >
+		
+	    <ImageView
+	        android:id="@+id/contactImage"
+	
+	        android:layout_width="50dip"
+	        android:layout_height="50dip"
+	
+	        android:layout_alignParentTop="true"
+	        android:layout_alignParentBottom="true"
+	        android:layout_alignParentLeft="true"
+	        android:layout_marginRight="6dip"
+	
+	        android:src="@drawable/icon" />
+
+	    <TextView
+	        android:id="@+id/firstLine"
+	
+	        android:layout_width="fill_parent"
+	        android:layout_height="36dip"
+	
+	        android:layout_toRightOf="@id/contactImage"
+	
+	        android:layout_alignParentTop="true"
+	        android:layout_alignWithParentIfMissing="true"
+	
+	        android:gravity="center_vertical"
+	        
+	        android:textAppearance="?android:attr/textAppearanceMedium" 
+	        android:text="Big Text"
+	        />
+	
+	    <TextView
+	        android:id="@+id/secondLine"
+	
+	        android:layout_width="fill_parent"
+	        android:layout_height="fill_parent" 
+	    	android:layout_below="@id/firstLine"
+	
+	        android:layout_toRightOf="@id/contactImage"
+	
+	        android:layout_alignParentBottom="true"
+	
+	        android:singleLine="true"
+	        android:ellipsize="marquee"
+	
+	       	android:textAppearance="?android:attr/textAppearanceSmall" 
+	        android:text="Small Text"
+		/>
+		</com.bisbe.contacts.ContactsContentLayout>
+	
+
+
+</RelativeLayout>
