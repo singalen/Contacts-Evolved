@@ -19,7 +19,7 @@
        
        />
 
-	<com.bisbe.contacts.ContactsContentLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	<com.bisbe.contactsevolved.ContactsContentLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	    android:layout_width="fill_parent"
 	    android:layout_height="fill_parent"
 	    android:layout_alignParentLeft="true"
@@ -79,7 +79,7 @@
 	       	android:textAppearance="?android:attr/textAppearanceSmall" 
 	        android:text="Small Text"
 		/>
-		</com.bisbe.contacts.ContactsContentLayout>
+		</com.bisbe.contactsevolved.ContactsContentLayout>
 	
 
 
