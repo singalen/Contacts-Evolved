@@ -3,9 +3,7 @@ package com.bisbe.contacts;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.ContextMenu.ContextMenuInfo;
-import android.widget.AdapterView;
 import android.widget.RelativeLayout;
-import android.view.ContextMenu.ContextMenuInfo;
 public class ContactsContentLayout extends RelativeLayout {
 
 	private ContextMenuInfo mContextMenuInfo;

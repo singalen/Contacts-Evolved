@@ -39,7 +39,7 @@ public class ContactsListView extends ListView {
 		setItemsCanFocus(true);
 		// TODO Auto-generated constructor stub
 	}
-
+	
 	private OnItemClickListener contactClickListener = new OnItemClickListener()
 	{
 	    public void onItemClick(AdapterView<?> parent, View v, int position, long dbidentifier) 

@@ -9,6 +9,7 @@ import android.app.Dialog;
 import android.app.TabActivity;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -29,7 +30,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
-import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ListAdapter;
@@ -234,11 +234,16 @@ public class ContactsEvolved extends TabActivity {
 	public static final int ADD_GROUP = 0;
 	public static final int DELETE_GROUP = 1;
 	public static final int SELECT_VISIBLE_GROUPS = 2;
+	public static final int ADD_CONTACT = 3;
 	public boolean onCreateOptionsMenu(Menu menu) 
 	{
 	    menu.add(0, SELECT_VISIBLE_GROUPS, 0, "Select shown groups");
 	    menu.add(0, ADD_GROUP, 0, "Add a group");
 	    menu.add(0, DELETE_GROUP, 0, "Delete this group");
+
+	 	Intent myIntent = new Intent(Contacts.Intents.Insert.ACTION, People.CONTENT_URI); 
+	    menu.add(0,ADD_CONTACT,0, "Add a contact").setIntent(myIntent);
+	    
 
 	    
 	    
@@ -255,6 +260,8 @@ public class ContactsEvolved extends TabActivity {
 	        return true;
 	    case SELECT_VISIBLE_GROUPS:
 	    	selectGroups();
+	    case ADD_CONTACT:
+	    	setupTabs();
 	    	
 	        
 	    }
@@ -335,7 +342,7 @@ public class ContactsEvolved extends TabActivity {
 		    		    		}
 		    		    		
 		    		    		long groupID = groupCursor.getLong(groupIdIndex);
-		    		    		getContentResolver().delete(Groups.CONTENT_URI, Groups._ID + "== " + groupID, null);
+		    		    		getContentResolver().delete(Groups.CONTENT_URI, Groups._ID + " == " + groupID, null);
 			                	setupTabs();
 	    		               
 	    		           }
@@ -456,17 +463,15 @@ public class ContactsEvolved extends TabActivity {
 	    		           public void onClick(DialogInterface dialog, int id) 
 	    		           {
 
-	    		        	   String personClause = GroupMembership.PERSON_ID + " == " + membershipPersonID;
-	    		               String nameClause = Groups.NAME + "== " + membershipGroupName;
-	    		               String whereClause = personClause + " AND " + nameClause;
-	    		               Uri uri = Uri.parse(GroupMembership.CONTENT_URI.toString() + "/" + membershipGroupName);
-	    		               getContentResolver().delete(uri, whereClause, null);
-	    		               setupTabs();
-	    		        	   
+	    		        	   if(membershipPersonID < 0 || membershipGroupName == null)
+	    		        	   {
+	    		        		   return;
+	    		        	   }
+	    		        	   long membershipID = getGroupMembershipID(membershipPersonID, membershipGroupName);
+	    		        	   removeGroupMembershipByID(membershipID);
 	    		        	   membershipGroupName = null;
 	    		               membershipPersonID = -1;
 	    		               setupTabs();
-
 	    		           }
 	    		       })
 	    		       .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
@@ -527,10 +532,10 @@ public class ContactsEvolved extends TabActivity {
 	 {
 		 	super.onCreateContextMenu(menu, v, menuInfo);
 		 	menu.add(0, EDIT_CONTACT_DETAILS, 0,  "Edit Contact Details");
-		 	menu.add(0, DELETE_CONTACT, 0,  "Delete Contact Details");
+		 	menu.add(0, DELETE_CONTACT, 0,  "Delete Contact");
 		 	menu.add(0, ADD_GROUP_MEMBERSHIP, 0, "Add to Group");
+		 	menu.add(0, REMOVE_GROUP_MEMBERSHIP, 0, "Remove from Group");
 
-		 	AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
 
 	 }
 
@@ -591,12 +596,48 @@ public class ContactsEvolved extends TabActivity {
 	 private void deleteContact(View v,long personId)
 	 {
 		 	Uri personUri = ContentUris.withAppendedId(People.CONTENT_URI, personId);
-		 	Log.d("edit contact", "uri: " + personUri.toString());
-		 	Intent myIntent = new Intent(Intent.ACTION_DELETE, personUri); 
-	    	v.getContext().startActivity(myIntent);
-	    	setupTabs();
+		 	Log.d("delete contact", "uri: " + personUri.toString());
+
+            final int cnt = getApplicationContext().getContentResolver().delete(
+                    ContentUris.withAppendedId(
+                            Contacts.People.CONTENT_URI,
+                            personId), null, null);
+
+            setupTabs();
 
 	 }
 	 
+		public long getGroupMembershipID(long contactID, String groupName) 
+		{
+		    Cursor cur = null;
+		    Context context = getApplicationContext();
+		    long returnID = 0;
+		    try {
+		        cur = context.getContentResolver().query(
+		                Contacts.GroupMembership.CONTENT_URI,
+		                new String[] { Contacts.GroupMembership._ID },
+		                new StringBuilder().append(Contacts.GroupMembership.NAME).append("=?")
+		                .append(" AND ").append(Contacts.GroupMembership.PERSON_ID).append("=?")
+		                .toString(),
+		                new String[] { groupName, String.valueOf(contactID) },
+		                Contacts.GroupMembership.DEFAULT_SORT_ORDER);
+		        if (cur.moveToFirst())
+		            returnID = cur.getLong(0);
+		    } finally {
+		        cur.close();
+		    }
+		    return returnID;
+		}
+		
+		public void removeGroupMembershipByID(long groupMembershipID)
+		{
+			
+            final int cnt = getApplicationContext().getContentResolver().delete(
+                    ContentUris.withAppendedId(
+                            Contacts.GroupMembership.CONTENT_URI,
+                            groupMembershipID), null, null);
+            if (cnt != 0)
+                Toast.makeText(getApplicationContext(), "Removed.", Toast.LENGTH_SHORT).show();
+		}
     
 }

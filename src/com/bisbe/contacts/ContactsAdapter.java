@@ -1,5 +1,7 @@
 package com.bisbe.contacts;
 
+import java.util.HashMap;
+
 import android.app.Activity;
 import android.content.ContentUris;
 import android.content.Context;
@@ -13,79 +15,146 @@ import android.view.ViewGroup;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
-public class ContactsAdapter extends SimpleCursorAdapter {
+public class ContactsAdapter extends SimpleCursorAdapter 
+{
 
 	Activity context;
+	public static HashMap<String, Bitmap> personPhotos = new HashMap<String, Bitmap>();
+	
 	public ContactsAdapter(Context context, int layout, Cursor c,
-			String[] from, int[] to) {
+			String[] from, int[] to) 
+	{
 		super(context, layout, c, from, to);
 		this.context = (Activity)context;
 		// TODO Auto-generated constructor stub
+		loadPhotos();
 	}
 
+	public void loadPhotos()
+	{
+    	Thread thread = new Thread() {
+    		@Override
+    		public void run() {
+    			//TODO : set imageView to a "pending" image
+    			Cursor c = getCursor();
+    			if(c.moveToFirst())
+    			{
+    				do
+    				{
+						 int personIdIndex = c.getColumnIndex(Contacts.People._ID);
+						 int personId = c.getInt(personIdIndex);
+				 
+						 Uri personUri = ContentUris.withAppendedId(
+				                 Contacts.People.CONTENT_URI, personId);
+
+    					 if(!personPhotos.containsKey(personUri.toString()))
+    					 {
+    						 personPhotos.put(personUri.toString(),Contacts.People.loadContactPhoto(context, personUri, 0, null));
+    					 }
+    					
+    				}
+    				while(c.moveToNext());
+    			}
+    		}
+    	};
+    	thread.start();
+	}
 	
+	 class ViewHolder
+	 {
+		 ImageView contactPhotoView;
+		 TextView nameLabel;
+		 TextView phoneLabel;		 
+		 ContactsContentLayout contentArea;
+		 ImageView callButton;
+	 }
+	
+	 @Override
 	 public View getView(int position, View convertView, ViewGroup parent) 
 	 {
 		 Cursor c = getCursor();
 		 c.moveToPosition(position);
-		 View row=View.inflate(context, R.layout.contact_list_item, null);
+		 
+		 ViewHolder holder;
+		 if (convertView == null) 
+		 {
+			 convertView = View.inflate(context, R.layout.contact_list_item, null);
+			 holder = new ViewHolder();
+			 holder.contactPhotoView = (ImageView) (convertView.findViewById(R.id.contactImage));
+			 holder.nameLabel=(TextView)(convertView.findViewById(R.id.firstLine));
+			 holder.phoneLabel=(TextView)(convertView.findViewById(R.id.secondLine));
+	         holder.callButton = (ImageView) (convertView.findViewById(R.id.callButton));
+	         holder.contentArea = (ContactsContentLayout) (convertView.findViewById(R.id.row_content));
+			 convertView.setTag(holder);
+		 } 
+		 else 
+		 {
+			 holder = (ViewHolder) convertView.getTag();
+		 }
+		 
 
 		 int personIdIndex = c.getColumnIndex(Contacts.People._ID);
 		 int personId = c.getInt(personIdIndex);
-		 ImageView contactPhotoView = (ImageView) (row.findViewById(R.id.contactImage));
  
 		 Uri personUri = ContentUris.withAppendedId(
                  Contacts.People.CONTENT_URI, personId);
- 
-	     Bitmap photo = Contacts.People.loadContactPhoto(context, personUri, 0, null);
-	     contactPhotoView.setImageBitmap(photo);
+
+		 //Set Photo
+
+		 if(!personPhotos.containsKey(personUri.toString()))
+		 {
+			 personPhotos.put(personUri.toString(),Contacts.People.loadContactPhoto(context, personUri, 0, null));
+		 }
 		 
-		 TextView nameLabel=(TextView)(row.findViewById(R.id.firstLine));
-		 TextView phoneLabel=(TextView)(row.findViewById(R.id.secondLine));
+	     Bitmap photo = personPhotos.get(personUri.toString());
+	     holder.contactPhotoView.setImageBitmap(photo);
 		 
+		 //Set Name Label
          int nameIndex = c.getColumnIndex(Contacts.People.NAME);
          String name = c.getString(nameIndex);
-         nameLabel.setText(name); 
+         holder.nameLabel.setText(name); 
 
-		 
+		 //Set Phone Number Label
 		 int phoneIndex = c.getColumnIndex(Contacts.People.NUMBER);
          String phone = c.getString(phoneIndex);
-         ImageView callButton = (ImageView) (row.findViewById(R.id.callButton));
 
          if(phone != null || phone.length() > 0)
          {
-        	 phoneLabel.setText(phone); 
+        	 holder.phoneLabel.setText(phone); 
          }
          else
          {
-        	 phoneLabel.setText("");
-        	 callButton.setVisibility(View.INVISIBLE);
-        	 parent.removeView(callButton);
+        	 holder.phoneLabel.setText("");
+        	 holder.callButton.setVisibility(View.INVISIBLE);
+        	 parent.removeView(holder.callButton);
         	 
          }
 
-         
-         
-  
-		 ContactsContentLayout contentArea = (ContactsContentLayout) (row.findViewById(R.id.row_content));
-
-		 contentArea.setClickable(true);
-         contentArea.setFocusable(true);
-         contentArea.setBackgroundResource(android.R.drawable.menuitem_background); 
-         
+		 holder.contentArea.setClickable(true);
+         holder.contentArea.setFocusable(true);
+         holder.contentArea.setBackgroundResource(android.R.drawable.menuitem_background); 
          
          String personID = c.getString(c.getColumnIndex(Contacts.People._ID));
+         AdapterView.AdapterContextMenuInfo menuInfo = (AdapterView.AdapterContextMenuInfo) holder.contentArea.getContextMenuInfo();
 
-         AdapterView.AdapterContextMenuInfo menuInfo = new AdapterView.AdapterContextMenuInfo(contentArea, position, personId);
-         contentArea.setContextMenuInfo(menuInfo);
+         if(holder.contentArea.getContextMenuInfo() == null)
+         {
+        	 menuInfo = new AdapterView.AdapterContextMenuInfo(holder.contentArea, position, personId);
+         }
+         else
+         {
+        	 menuInfo.targetView = holder.contentArea;
+        	 menuInfo.position = position;
+        	 menuInfo.id = personId;
+         }
+         holder.contentArea.setContextMenuInfo(menuInfo);
 
          
-         contentArea.setTag(personID);
-         context.registerForContextMenu(contentArea);
+         holder.contentArea.setTag(personID);
+         context.registerForContextMenu(holder.contentArea);
      	 OnClickListener contactClickListener = new OnClickListener()
     	 {
     	    public void onClick(View v) 
@@ -100,17 +169,17 @@ public class ContactsAdapter extends SimpleCursorAdapter {
     	    }
     	};
     	
-    	contentArea.setOnClickListener(contactClickListener);
-         
+    	holder.contentArea.setOnClickListener(contactClickListener); 
     	
     	if(phone != null && phone.length() > 0)
     	{
     		
-            callButton.setClickable(true);
-            callButton.setFocusable(true);
-            callButton.setImageResource(R.drawable.badge_action_call);
-            callButton.setBackgroundResource(android.R.drawable.menuitem_background);
-    		callButton.setTag(phone);
+            holder.callButton.setImageResource(R.drawable.badge_action_call);
+    		holder.callButton.setClickable(true);
+            holder.callButton.setFocusable(true);
+            
+            holder.callButton.setBackgroundResource(android.R.drawable.menuitem_background);
+            holder.callButton.setTag(phone);
 	    	OnClickListener callContactListener = new OnClickListener()
 	    	{
 	    	    public void onClick(View v) 
@@ -124,10 +193,16 @@ public class ContactsAdapter extends SimpleCursorAdapter {
 	    	    	
 	    	    }
 	    	};
-	    	callButton.setOnClickListener(callContactListener);
+	    	holder.callButton.setOnClickListener(callContactListener);
+    	}
+    	else
+    	{
+    			holder.callButton.setImageDrawable(null);
+        		holder.callButton.setClickable(false);
+                holder.callButton.setFocusable(false);
     	}
     	
-        return(row);
+        return(convertView);
 	 }
 	
 	
