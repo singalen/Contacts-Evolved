@@ -1,8 +1,6 @@
 package com.bisbe.contactsevolved;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -16,12 +14,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.database.Cursor;
-import android.database.CursorJoiner;
-import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Contacts;
-import android.provider.Contacts.GroupMembership;
 import android.provider.Contacts.Groups;
 import android.provider.Contacts.People;
 import android.util.Log;
@@ -33,7 +28,6 @@ import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.ListAdapter;
 import android.widget.TabHost;
 import android.widget.Toast;
 import android.widget.AdapterView.AdapterContextMenuInfo;
@@ -94,56 +88,7 @@ public class ContactsEvolved extends TabActivity {
 		mTabHost.addTab(useSpec);
 	}
 	
-	private Cursor getGroupMembershipCursor(String groupName)
-	{
-		//Get cursor for Group Membership.  Filter for specific group from this iteration of the loop.
-		String gmWhereClause = Contacts.GroupMembership.NAME + "= " + "'" + groupName + "'";
-		Cursor gmCursor = managedQuery(GroupMembership.CONTENT_URI,
-										null,
-										gmWhereClause,
-										null,
-										GroupMembership.PERSON_ID + " ASC");
-		return gmCursor;
-	}
-
 	
-	private MatrixCursor genMatrix(CursorJoiner cj, Cursor gmCursor, Cursor contactsCursor)
-	{
-		MatrixCursor mCursor = new MatrixCursor( new String[] {People._ID,People.NAME, People.NUMBER},10);
-//		SortedMap<String, String> mapResults = new TreeMap<String, String>();
-		ArrayList<String[]> listResults = new ArrayList<String[]>();
-        for (CursorJoiner.Result joinerResult : cj) 
-        {
-            switch (joinerResult) 
-            {
-                    case BOTH: // handle case where a row with the same key is in both cursors
-                            String id = contactsCursor.getString(contactsCursor.getColumnIndex(People._ID));
-                            String name = contactsCursor.getString(contactsCursor.getColumnIndex(People.NAME));
-                            String phone = contactsCursor.getString(contactsCursor.getColumnIndex(People.NUMBER));
-                            if(phone == null)
-                            	phone = "";
-                            listResults.add(new String[] {id, name, phone});
-                            
- //                           Log.d("Groups", "From GM: GM Name: " + gmCursor.getString(gmCursor.getColumnIndex(GroupMembership.NAME)) + ", GroupID: " + gmCursor.getString(gmCursor.getColumnIndex(GroupMembership.GROUP_ID)));
-                            break;
-            }
-            
-        }
-
- 
-        Collections.sort(listResults, new Comparator<String[]>() {
-            public int compare(String[] obj1, String[] obj2) {
-                return obj1[1].compareTo(obj2[1]);
-            }
-        });
-
-        for(String[] entry : listResults)
-        {
-        	mCursor.addRow(entry);
-        }
-        
-        return mCursor;
-	}
 
 	
 	private void generateTabs(Cursor groupsCursor, Cursor contactsCursor, FrameLayout fl)
@@ -302,7 +247,7 @@ public class ContactsEvolved extends TabActivity {
 	                	EditText et = (EditText) textEntryView.findViewById(R.id.groupname_edit);
 	                	values.put(Groups.NAME, et.getText().toString());
 	
-	                	Uri uri = getContentResolver().insert(Groups.CONTENT_URI, values);
+	                	getContentResolver().insert(Groups.CONTENT_URI, values);
 	                	setupTabs();
 	                    /* User clicked OK so do some stuff */
 	                }
@@ -325,7 +270,7 @@ public class ContactsEvolved extends TabActivity {
 	    		   		 	Uri personUri = ContentUris.withAppendedId(People.CONTENT_URI, deletePersonID);
 	    				 	Log.d("delete contact", "uri: " + personUri.toString());
 
-	    		            final int cnt = getApplicationContext().getContentResolver().delete(
+	    		            getApplicationContext().getContentResolver().delete(
 	    		                    ContentUris.withAppendedId(
 	    		                            Contacts.People.CONTENT_URI,
 	    		                            deletePersonID), null, null);
@@ -654,8 +599,7 @@ public class ContactsEvolved extends TabActivity {
 	           long groupID = getCurrentGroupID();
 	           People.addToGroup(getContentResolver(), personID, groupID);
 
-	           Toast.makeText(getApplicationContext(), "Contact ID: " + personID + ", group ID: " + groupID, Toast.LENGTH_SHORT).show();
-	           // TODO Whatever you want to do with the selected contact name.
+
 	         }
 	       }
 	       break;
