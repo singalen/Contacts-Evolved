@@ -56,6 +56,7 @@ public class ContactsEvolved extends TabActivity {
 	{
 		tabNames = null;
 		removeDialog(SELECT_GROUP_DIALOG); 
+		removeDialog(REMOVE_MEMBERSHIP_DIALOG);
         TabHost mTabHost = getTabHost();
         if(mTabHost.getChildCount() > 0)
         {
@@ -273,8 +274,6 @@ public class ContactsEvolved extends TabActivity {
 		showDialog(SELECT_GROUP_DIALOG);
 	}
 	
-	
-	
 	public static final int ADD_GROUP_DIALOG = 0;
 	public static final int DELETE_GROUP_DIALOG = 1;
 	public static final int SELECT_GROUP_DIALOG = 2;
@@ -282,6 +281,8 @@ public class ContactsEvolved extends TabActivity {
 	public static final int REMOVE_MEMBERSHIP_DIALOG = 4;
 	public static final int DELETE_CONTACT_DIALOG = 5;
 
+	
+	
 	@Override
     protected Dialog onCreateDialog(int id) 
     {
@@ -499,8 +500,10 @@ public class ContactsEvolved extends TabActivity {
 	    		           public void onClick(DialogInterface dialog, int id) 
 	    		           {
 	    		                dialog.cancel();
+	    		        		removeDialog(REMOVE_MEMBERSHIP_DIALOG);
+
 	    		           }
-	    		       })	    		       
+	    		       })
 	    		       .setCancelable(true);
                 		Cursor currentGroupsCursor = People.queryGroups(getContentResolver(), membershipPersonID);
                 		int cgcSize = currentGroupsCursor.getCount();
@@ -600,6 +603,7 @@ public class ContactsEvolved extends TabActivity {
 	 private void removeGroupMembership(long personID)
 	 {
 		 membershipPersonID = personID;
+		 removeDialog(REMOVE_MEMBERSHIP_DIALOG);
 		 showDialog(REMOVE_MEMBERSHIP_DIALOG);
 	 }
 	 
@@ -708,7 +712,6 @@ public class ContactsEvolved extends TabActivity {
 			int systemGroupIndex = groupCursor.getColumnIndex(Contacts.GroupsColumns.SYSTEM_ID);
 			if(!groupCursor.isNull(systemGroupIndex))
 			{
-				Toast.makeText(getApplicationContext(), "Cannot delete System Group.", Toast.LENGTH_SHORT).show();
 				return -1;
 			}
 			

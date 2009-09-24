@@ -127,7 +127,8 @@ public class ContactsAdapter extends SimpleCursorAdapter
 
          if(phone != null && phone.length() > 0)
          {
-        	 holder.phoneLabel.setText(phone); 
+        	 holder.phoneLabel.setText(phone);
+        	 holder.callButton.setVisibility(View.VISIBLE);
          }
          else
          {
