@@ -51,7 +51,9 @@ public class ContactsEvolved extends TabActivity {
 		tabNames = null;
 		removeDialog(SELECT_GROUP_DIALOG); 
 		removeDialog(REMOVE_MEMBERSHIP_DIALOG);
-        TabHost mTabHost = getTabHost();
+		removeDialog(ADD_MEMBERSHIP_DIALOG);
+
+		TabHost mTabHost = getTabHost();
         if(mTabHost.getChildCount() > 0)
         {
         	mTabHost.setCurrentTab(0);
@@ -83,6 +85,7 @@ public class ContactsEvolved extends TabActivity {
 		String useName = tabTitle;
 		useName = useName.replaceAll("System Group: ", "");
 		TabSpec useSpec = mTabHost.newTabSpec(tabTitle).setIndicator(useName).setContent(lv.getId());
+		
 
 		tabNames.add(tabTitle);
 		mTabHost.addTab(useSpec);
@@ -144,21 +147,19 @@ public class ContactsEvolved extends TabActivity {
 	
 	private Cursor getGroupsCursor()
 	{
-		// Form an array specifying which columns to return. 
-//		String[] projection = new String[] { Groups._ID, Groups._COUNT, Groups.NAME};
 
 		// Make the query. 
 		Cursor groupsCursor = managedQuery(Groups.CONTENT_URI,
-		                         null, // Which columns to return 
-		                         null,       // Which rows to return (all rows)
-		                         null,       // Selection arguments (none)
+		                         null, // All columns 
+		                         null,       // All rows
+		                         null,     
 		                         // Put the results in ascending order by name
 		                         Groups.NAME + " ASC");
-
+		
 		return groupsCursor;
 	}
 
-	private Cursor getGroupCursorByName(String  groupName)
+	private Cursor getGroupCursorByName(String groupName)
 	{
 		Cursor groupsCursor = managedQuery(Groups.CONTENT_URI,
                 null, // Which columns to return 
@@ -178,10 +179,10 @@ public class ContactsEvolved extends TabActivity {
 	public static final int ADD_CONTACT = 3;
 	public boolean onCreateOptionsMenu(Menu menu) 
 	{
-	    menu.add(0, SELECT_VISIBLE_GROUPS, 0, "Select Shown Groups");
-	    menu.add(0, ADD_GROUP, 0, "Add a Group");
-	    menu.add(0, DELETE_GROUP, 0, "Delete This Group");
-	    menu.add(0,ADD_CONTACT,0, "Create New Contact");
+	    menu.add(0, DELETE_GROUP, 0, "Delete This Group").setIcon(R.drawable.minus);
+	    menu.add(0, ADD_GROUP, 0, "Add a Group").setIcon(R.drawable.plus);
+	    menu.add(0, SELECT_VISIBLE_GROUPS, 0, "Select Shown Groups").setIcon(R.drawable.people);
+	    menu.add(0,ADD_CONTACT,0, "Create New Contact").setIcon(R.drawable.person);
 	    
 	    return true;
 	}
@@ -216,6 +217,7 @@ public class ContactsEvolved extends TabActivity {
 	
 	public void selectGroups()
 	{
+		
 		showDialog(SELECT_GROUP_DIALOG);
 	}
 	
