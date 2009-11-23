@@ -201,7 +201,6 @@ public class ContactsAdapter extends SimpleCursorAdapter implements View.OnClick
     	{
     			holder.callButton.setImageDrawable(null);
     	}
-    	
         return(convertView);
 	 }
 	
