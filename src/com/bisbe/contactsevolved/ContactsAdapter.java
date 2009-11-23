@@ -18,7 +18,7 @@ import android.widget.ImageView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
-public class ContactsAdapter extends SimpleCursorAdapter 
+public class ContactsAdapter extends SimpleCursorAdapter implements View.OnClickListener
 {
 
 	Activity context;
@@ -66,15 +66,30 @@ public class ContactsAdapter extends SimpleCursorAdapter
     	};
     	thread.start();
 	}
-	
-	 class ViewHolder
+
+	 public class ViewHolder
 	 {
 		 ImageView contactPhotoView;
 		 TextView nameLabel;
 		 TextView phoneLabel;		 
-		 ContactsContentLayout contentArea;
+
 		 ImageView callButton;
+		 String personID;
 	 }
+
+    public void onClick(View v) 
+    {
+        // do something when the button is clicked
+    	String pid = ((ViewHolder)(v.getTag())).personID;
+    	Uri viewContactURI = Uri.parse("content://contacts/people/" + pid);
+    	Intent myIntent = new Intent(Intent.ACTION_VIEW, viewContactURI); 
+
+    	v.getContext().startActivity(myIntent);
+    	
+    }
+	
+	
+	
 	
 	 @Override
 	 public View getView(int position, View convertView, ViewGroup parent) 
@@ -91,7 +106,6 @@ public class ContactsAdapter extends SimpleCursorAdapter
 			 holder.nameLabel=(TextView)(convertView.findViewById(R.id.firstLine));
 			 holder.phoneLabel=(TextView)(convertView.findViewById(R.id.secondLine));
 	         holder.callButton = (ImageView) (convertView.findViewById(R.id.callButton));
-	         holder.contentArea = (ContactsContentLayout) (convertView.findViewById(R.id.row_content));
 			 convertView.setTag(holder);
 		 } 
 		 else 
@@ -138,50 +152,33 @@ public class ContactsAdapter extends SimpleCursorAdapter
         	 
          }
 
-		 holder.contentArea.setClickable(true);
-         holder.contentArea.setFocusable(true);
-         holder.contentArea.setBackgroundResource(android.R.drawable.menuitem_background); 
+         convertView.setBackgroundResource(android.R.drawable.menuitem_background); 
          
          String personID = c.getString(c.getColumnIndex(Contacts.People._ID));
-         AdapterView.AdapterContextMenuInfo menuInfo = (AdapterView.AdapterContextMenuInfo) holder.contentArea.getContextMenuInfo();
+         AdapterView.AdapterContextMenuInfo menuInfo = (AdapterView.AdapterContextMenuInfo) ((ContactsContentLayout)convertView).getContextMenuInfo();
 
-         if(holder.contentArea.getContextMenuInfo() == null)
+         if(((ContactsContentLayout)convertView).getContextMenuInfo() == null)
          {
-        	 menuInfo = new AdapterView.AdapterContextMenuInfo(holder.contentArea, position, personId);
+        	 menuInfo = new AdapterView.AdapterContextMenuInfo(convertView, position, personId);
          }
          else
          {
-        	 menuInfo.targetView = holder.contentArea;
+        	 menuInfo.targetView = convertView;
         	 menuInfo.position = position;
         	 menuInfo.id = personId;
          }
-         holder.contentArea.setContextMenuInfo(menuInfo);
+         ((ContactsContentLayout)convertView).setContextMenuInfo(menuInfo);
 
          
-         holder.contentArea.setTag(personID);
-         context.registerForContextMenu(holder.contentArea);
-     	 OnClickListener contactClickListener = new OnClickListener()
-    	 {
-    	    public void onClick(View v) 
-    	    {
-    	        // do something when the button is clicked
-    	    	String pid = (String)(v.getTag());
-    	    	Uri viewContactURI = Uri.parse("content://contacts/people/" + pid);
-    	    	Intent myIntent = new Intent(Intent.ACTION_VIEW, viewContactURI); 
-
-    	    	v.getContext().startActivity(myIntent);
-    	    	
-    	    }
-    	};
+         holder.personID = personID;
+         context.registerForContextMenu(convertView);
     	
-    	holder.contentArea.setOnClickListener(contactClickListener); 
+    	convertView.setOnClickListener(this); 
     	
     	if(phone != null && phone.length() > 0)
     	{
     		
             holder.callButton.setImageResource(R.drawable.badge_action_call);
-    		holder.callButton.setClickable(true);
-            holder.callButton.setFocusable(true);
             
             holder.callButton.setBackgroundResource(android.R.drawable.menuitem_background);
             holder.callButton.setTag(phone);
@@ -203,8 +200,6 @@ public class ContactsAdapter extends SimpleCursorAdapter
     	else
     	{
     			holder.callButton.setImageDrawable(null);
-        		holder.callButton.setClickable(false);
-                holder.callButton.setFocusable(false);
     	}
     	
         return(convertView);

@@ -40,9 +40,12 @@ public class ContactsEvolved extends TabActivity {
 	@Override
     public void onCreate(Bundle savedInstanceState) 
 	{
-        super.onCreate(savedInstanceState);   
+        super.onCreate(savedInstanceState);
+    	Log.d("Starting Program", "After Oncreate");
         setContentView(R.layout.main);
+    	Log.d("Starting Program", "After setContentView");
         setupTabs();
+    	Log.d("Starting Program", "After setupTabs");
 	}
 	
 
@@ -63,10 +66,9 @@ public class ContactsEvolved extends TabActivity {
 
         FrameLayout fl = (FrameLayout) findViewById(android.R.id.tabcontent);
         
-        Cursor c = managedQuery(People.CONTENT_URI, null, null, null, People._ID + " ASC");
         Cursor groupsCursor = getGroupsCursor();
 
-        generateTabs(groupsCursor, c, fl);
+        generateTabs(groupsCursor, fl);
         mTabHost.setCurrentTab(0);
         mTabHost.refreshDrawableState();
 		
@@ -94,7 +96,7 @@ public class ContactsEvolved extends TabActivity {
 	
 
 	
-	private void generateTabs(Cursor groupsCursor, Cursor contactsCursor, FrameLayout fl)
+	private void generateTabs(Cursor groupsCursor, FrameLayout fl)
 	{
 		int groupNameIndex = groupsCursor.getColumnIndex(Groups.NAME);
 		SharedPreferences settings = this.getSharedPreferences(SHOW_GROUPS, 0);
@@ -235,6 +237,7 @@ public class ContactsEvolved extends TabActivity {
     {
     	switch(id)
     	{
+    		//Create a new group.  WILL SYNC.
 	    	case ADD_GROUP_DIALOG:
 	        LayoutInflater factory = LayoutInflater.from(this);
 	        final View textEntryView = factory.inflate(R.layout.alert_dialog_text_entry, null);
@@ -251,16 +254,16 @@ public class ContactsEvolved extends TabActivity {
 	
 	                	getContentResolver().insert(Groups.CONTENT_URI, values);
 	                	setupTabs();
-	                    /* User clicked OK so do some stuff */
 	                }
 	            })
 	            .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
 	                public void onClick(DialogInterface dialog, int whichButton) {
 	
-	                    /* User clicked cancel so do some stuff */
+	                    // Placeholder.  Currently nothing to do when user hits cancel.
 	                }
 	            })
 	            .create();
+	        //Delete a contact. WILL SYNC.
 	    	case DELETE_CONTACT_DIALOG:
 	    		AlertDialog.Builder dcBuilder = new AlertDialog.Builder(this);
 	    		dcBuilder.setMessage("Are you sure you want to delete this contact?")
@@ -290,6 +293,7 @@ public class ContactsEvolved extends TabActivity {
 	    		AlertDialog confirmContactDelete = dcBuilder.create();
 	    		return confirmContactDelete;
 	    		
+	    	//Delete a group from database.  WILL SYNC.
 	    	case DELETE_GROUP_DIALOG:
 	    		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 	    		builder.setMessage("Are you sure you want to delete this group?")
@@ -313,6 +317,7 @@ public class ContactsEvolved extends TabActivity {
 	    		       });
 	    		AlertDialog confirmDelete = builder.create();
 	    		return confirmDelete;
+	    	//Select which groups are currently visible.
 	    	case SELECT_GROUP_DIALOG:
 	    		Log.d("OnCreateDialog", "SELECT_GROUP_DIALOG case active");
                 AlertDialog.Builder sgBuilder = new AlertDialog.Builder(this)
@@ -362,6 +367,7 @@ public class ContactsEvolved extends TabActivity {
 
 			            return sgBuilder.create();
 
+			//Add an existing contact to a group. WILL SYNC.
 	    	case ADD_MEMBERSHIP_DIALOG:
 	    		
                 AlertDialog.Builder personGroupBuilder = new AlertDialog.Builder(this)
@@ -423,7 +429,7 @@ public class ContactsEvolved extends TabActivity {
 
 			            return personGroupBuilder.create();
 
-//Remove Membership Case
+			//Remove a contact from a group. WILL SYNC.
 	    	case REMOVE_MEMBERSHIP_DIALOG:
 	    		
                 personGroupBuilder = new AlertDialog.Builder(this)
@@ -587,83 +593,92 @@ public class ContactsEvolved extends TabActivity {
 	 public void onActivityResult(int reqCode, int resultCode, Intent data) 
 	 {
 	   super.onActivityResult(reqCode, resultCode, data);
-
+	
 	   switch (reqCode) 
 	   {
 	     case (GET_NEW_CONTACT_ACODE) :
-	       if (resultCode == Activity.RESULT_OK) 
-	       {
-	         Uri contactData = data.getData();
-	         Cursor c =  managedQuery(contactData, null, null, null, null);
-	         if (c.moveToFirst()) 
-	         {
-	           long personID = c.getLong(c.getColumnIndexOrThrow(People._ID));
-	           long groupID = getCurrentGroupID();
-	           People.addToGroup(getContentResolver(), personID, groupID);
-
-
-	         }
-	       }
-	       break;
+		     try
+		     {
+		       if (resultCode == Activity.RESULT_OK) 
+		       {
+		    	 if(data == null)
+		    	 {
+		    		 break;
+		    	 }
+		         Uri contactData = data.getData();
+		         Cursor c =  managedQuery(contactData, null, null, null, null);
+		         if (c.moveToFirst()) 
+		         {
+		           long personID = c.getLong(c.getColumnIndexOrThrow(People._ID));
+		           long groupID = getCurrentGroupID();
+		           People.addToGroup(getContentResolver(), personID, groupID);
+		         }
+		       }
+		     }
+		     catch(Exception e)
+		     {
+		    	 Log.d("OnActivitResult", e.getMessage());
+		     }
+		     break;
 	     case (EDIT_CONTACT_ACODE) :
-	    	 break;
-	    	 //nothing really needs doing here-  just update the tabs.
+		 break;
+		 //nothing really needs doing here-  just update the tabs.
 	   }
-	   setupTabs();
-	   
-	 }
-	 
-	 
-	 
-		public long getGroupMembershipID(long contactID, String groupName) 
+	   setupTabs(); 
+	}
+ 
+ 
+ 
+	public long getGroupMembershipID(long contactID, String groupName) 
+	{
+	    Cursor cur = null;
+	    Context context = getApplicationContext();
+	    long returnID = 0;
+	    try {
+	        cur = context.getContentResolver().query(
+	                Contacts.GroupMembership.CONTENT_URI,
+	                new String[] { Contacts.GroupMembership._ID },
+	                new StringBuilder().append(Contacts.GroupMembership.NAME).append("=?")
+	                .append(" AND ").append(Contacts.GroupMembership.PERSON_ID).append("=?")
+	                .toString(),
+	                new String[] { groupName, String.valueOf(contactID) },
+	                Contacts.GroupMembership.DEFAULT_SORT_ORDER);
+	        if (cur.moveToFirst())
+	            returnID = cur.getLong(0);
+	    } finally {
+	        cur.close();
+	    }
+	    return returnID;
+	}
+	
+	public void removeGroupMembershipByID(long groupMembershipID)
+	{
+		
+        final int cnt = getApplicationContext().getContentResolver().delete(
+                ContentUris.withAppendedId(
+                        Contacts.GroupMembership.CONTENT_URI,
+                        groupMembershipID), null, null);
+        if (cnt != 0)
+            Toast.makeText(getApplicationContext(), "Removed.", Toast.LENGTH_SHORT).show();
+	}
+
+	private long getCurrentGroupID() 
+	{
+		int tabIndex = getTabHost().getCurrentTab();
+		String groupName = tabNames.get(tabIndex);
+		
+		Cursor groupCursor = getGroupCursorByName(groupName);
+		groupCursor.moveToFirst();
+		int groupIdIndex = groupCursor.getColumnIndex(Groups._ID);
+		int systemGroupIndex = groupCursor.getColumnIndex(Contacts.GroupsColumns.SYSTEM_ID);
+		if(!groupCursor.isNull(systemGroupIndex))
 		{
-		    Cursor cur = null;
-		    Context context = getApplicationContext();
-		    long returnID = 0;
-		    try {
-		        cur = context.getContentResolver().query(
-		                Contacts.GroupMembership.CONTENT_URI,
-		                new String[] { Contacts.GroupMembership._ID },
-		                new StringBuilder().append(Contacts.GroupMembership.NAME).append("=?")
-		                .append(" AND ").append(Contacts.GroupMembership.PERSON_ID).append("=?")
-		                .toString(),
-		                new String[] { groupName, String.valueOf(contactID) },
-		                Contacts.GroupMembership.DEFAULT_SORT_ORDER);
-		        if (cur.moveToFirst())
-		            returnID = cur.getLong(0);
-		    } finally {
-		        cur.close();
-		    }
-		    return returnID;
+			return -1;
 		}
 		
-		public void removeGroupMembershipByID(long groupMembershipID)
-		{
-			
-            final int cnt = getApplicationContext().getContentResolver().delete(
-                    ContentUris.withAppendedId(
-                            Contacts.GroupMembership.CONTENT_URI,
-                            groupMembershipID), null, null);
-            if (cnt != 0)
-                Toast.makeText(getApplicationContext(), "Removed.", Toast.LENGTH_SHORT).show();
-		}
-
-		private long getCurrentGroupID() {
-			int tabIndex = getTabHost().getCurrentTab();
-			String groupName = tabNames.get(tabIndex);
-			
-			Cursor groupCursor = getGroupCursorByName(groupName);
-			groupCursor.moveToFirst();
-			int groupIdIndex = groupCursor.getColumnIndex(Groups._ID);
-			int systemGroupIndex = groupCursor.getColumnIndex(Contacts.GroupsColumns.SYSTEM_ID);
-			if(!groupCursor.isNull(systemGroupIndex))
-			{
-				return -1;
-			}
-			
-			long groupID = groupCursor.getLong(groupIdIndex);
-			groupCursor.close();
-			return groupID;
-		}
+		long groupID = groupCursor.getLong(groupIdIndex);
+		groupCursor.close();
+		return groupID;
+	}
     
 }

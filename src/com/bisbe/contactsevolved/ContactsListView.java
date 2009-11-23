@@ -9,49 +9,37 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.app.Activity;
 
-public class ContactsListView extends ListView {
+public class ContactsListView extends ListView implements AdapterView.OnItemClickListener {
 
 	
 	private Activity currActivity;
-
-	
 	
 	public ContactsListView(Context context) {
 		super(context);
 		currActivity = (Activity) context;
-		this.setOnItemClickListener(contactClickListener);
-		setItemsCanFocus(true);
-		// TODO Auto-generated constructor stub
+		this.setOnItemClickListener(this);
 	}
 	
 	public ContactsListView(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		currActivity = (Activity) context;
-		this.setOnItemClickListener(contactClickListener);
-		setItemsCanFocus(true);
-		// TODO Auto-generated constructor stub
+		this.setOnItemClickListener(this);
 	}
 
 	public ContactsListView(Context context, AttributeSet attrs, int defStyle) {
 		super(context, attrs, defStyle);
 		currActivity = (Activity) context;
-		this.setOnItemClickListener(contactClickListener);
-		setItemsCanFocus(true);
-		// TODO Auto-generated constructor stub
+		this.setOnItemClickListener(this);
 	}
 	
-	private OnItemClickListener contactClickListener = new OnItemClickListener()
-	{
-	    public void onItemClick(AdapterView<?> parent, View v, int position, long dbidentifier) 
-	    {
-	        // do something when the button is clicked
-	    	
-	    	Uri viewContactURI = Uri.parse("content://contacts/people/" + dbidentifier);
-	    	Intent myIntent = new Intent(Intent.ACTION_VIEW, viewContactURI); 
-	    	currActivity.startActivity(myIntent);
-	    	
-	    }
-	};
+
+    public void onItemClick(AdapterView<?> parent, View v, int position, long dbidentifier) 
+    {
+    	//Seems to only fire when keyboard selected, not on touch event?
+    	Uri viewContactURI = Uri.parse("content://contacts/people/" + dbidentifier);
+    	Intent myIntent = new Intent(Intent.ACTION_VIEW, viewContactURI); 
+    	currActivity.startActivity(myIntent);
+    }
 
 
 }
