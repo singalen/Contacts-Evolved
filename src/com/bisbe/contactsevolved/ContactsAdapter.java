@@ -94,6 +94,7 @@ public class ContactsAdapter extends SimpleCursorAdapter implements View.OnClick
 	 @Override
 	 public View getView(int position, View convertView, ViewGroup parent) 
 	 {
+		 
 		 Cursor c = getCursor();
 		 c.moveToPosition(position);
 		 
@@ -112,7 +113,7 @@ public class ContactsAdapter extends SimpleCursorAdapter implements View.OnClick
 		 {
 			 holder = (ViewHolder) convertView.getTag();
 		 }
-		 
+
 
 		 int personIdIndex = c.getColumnIndex(Contacts.People._ID);
 		 int personId = c.getInt(personIdIndex);
@@ -148,7 +149,6 @@ public class ContactsAdapter extends SimpleCursorAdapter implements View.OnClick
          {
         	 holder.phoneLabel.setText("");
         	 holder.callButton.setVisibility(View.INVISIBLE);
-//        	 parent.removeView(holder.callButton);
         	 
          }
 
@@ -170,10 +170,7 @@ public class ContactsAdapter extends SimpleCursorAdapter implements View.OnClick
          ((ContactsContentLayout)convertView).setContextMenuInfo(menuInfo);
 
          
-         holder.personID = personID;
-         context.registerForContextMenu(convertView);
-    	
-    	convertView.setOnClickListener(this); 
+        holder.personID = personID;
     	
     	if(phone != null && phone.length() > 0)
     	{
@@ -182,19 +179,21 @@ public class ContactsAdapter extends SimpleCursorAdapter implements View.OnClick
             
             holder.callButton.setBackgroundResource(android.R.drawable.menuitem_background);
             holder.callButton.setTag(phone);
-	    	OnClickListener callContactListener = new OnClickListener()
+
+            OnClickListener callContactListener = new OnClickListener()
 	    	{
 	    	    public void onClick(View v) 
 	    	    {
 	    	        // do something when the button is clicked
 
 	    	    	Uri callContactURI = Uri.parse("tel:" + (String)v.getTag());
-	    	    	Intent myIntent = new Intent(Intent.ACTION_CALL, callContactURI); 
-	
+	    	    	Intent myIntent = new Intent(Intent.ACTION_CALL, callContactURI);
+
 	    	    	v.getContext().startActivity(myIntent);
 	    	    	
 	    	    }
 	    	};
+
 	    	holder.callButton.setOnClickListener(callContactListener);
     	}
     	else
@@ -203,6 +202,4 @@ public class ContactsAdapter extends SimpleCursorAdapter implements View.OnClick
     	}
         return(convertView);
 	 }
-	
-	
 }

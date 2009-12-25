@@ -32,7 +32,7 @@
 	        android:id="@+id/firstLine"
 	
 	        android:layout_width="fill_parent"
-	        android:layout_height="32dip"
+	        android:layout_height="42dip"
 	        android:layout_toRightOf="@id/contactImage"
 	        android:layout_alignParentTop="true"
 	        android:layout_alignWithParentIfMissing="true"
@@ -45,7 +45,7 @@
 	    <TextView
 	        android:id="@+id/secondLine"
 	        android:layout_width="fill_parent"
-	        android:layout_height="fill_parent" 
+	        android:layout_height="20dip" 
 	    	android:layout_below="@id/firstLine"
 	        android:layout_toRightOf="@id/contactImage"
 	        android:layout_alignParentBottom="true"
@@ -54,9 +54,6 @@
 	       	android:textAppearance="?android:attr/textAppearanceSmall" 
 	        android:text="Small Text"
 		/>
-
-
-
 
 </com.bisbe.contactsevolved.ContactsContentLayout>
 	

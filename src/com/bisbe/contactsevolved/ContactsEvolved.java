@@ -26,6 +26,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TabHost;
@@ -123,6 +124,26 @@ public class ContactsEvolved extends TabActivity {
 				//Get cursor for Group Membership.  Filter for specific group from this iteration of the loop.
 
                 ContactsListView lv = new ContactsListView(this);
+              	AdapterView.OnItemClickListener myListener = new AdapterView.OnItemClickListener()
+            	{
+
+                	   public void onItemClick(AdapterView<?> parent, View v, int position, long dbidentifier) 
+                	    {
+                	    	//Seems to only fire when keyboard selected, not on touch event?
+                	    	Uri viewContactURI = Uri.parse("content://contacts/people/" + dbidentifier);
+                	    	Log.d("Stuff", String.valueOf(dbidentifier));
+                	    	Intent myIntent = new Intent(Intent.ACTION_VIEW, viewContactURI);
+                	    	startActivity(myIntent);
+                	    	    	
+                	    }
+
+                	   
+                   };
+                   
+                lv.setOnItemClickListener(myListener);
+                this.registerForContextMenu(lv);
+                
+                
                 
                 Uri useUri;
             	useUri = getUserGroupUri(groupName);
@@ -617,11 +638,16 @@ public class ContactsEvolved extends TabActivity {
 		     }
 		     catch(Exception e)
 		     {
-		    	 Log.d("OnActivitResult", e.getMessage());
+		    	 String errMsg = e.getMessage();
+		    	 if(errMsg == null)
+		    	 {
+		    		 errMsg = "";
+		    	 }
+		    	 Log.d("OnActivitResult", errMsg);
 		     }
 		     break;
 	     case (EDIT_CONTACT_ACODE) :
-		 break;
+	    	 break;
 		 //nothing really needs doing here-  just update the tabs.
 	   }
 	   setupTabs(); 
