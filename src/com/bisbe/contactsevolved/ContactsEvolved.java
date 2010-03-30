@@ -33,8 +33,8 @@ import android.widget.TabHost;
 import android.widget.Toast;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.TabHost.TabSpec;
+
 public class ContactsEvolved extends TabActivity {
-    /** Called when the activity is first created. */
 
 	final String SHOW_GROUPS = "showGroups";
 	
@@ -48,7 +48,6 @@ public class ContactsEvolved extends TabActivity {
         setupTabs();
     	Log.d("Starting Program", "After setupTabs");
 	}
-	
 
 	public void setupTabs()
 	{
@@ -63,16 +62,20 @@ public class ContactsEvolved extends TabActivity {
         	mTabHost.setCurrentTab(0);
         	mTabHost.clearAllTabs();
         }
-        mTabHost = getTabHost();
+        mTabHost = getTabHost(); // TODO: WTF?..
 
         FrameLayout fl = (FrameLayout) findViewById(android.R.id.tabcontent);
-        
         Cursor groupsCursor = getGroupsCursor();
-
-        generateTabs(groupsCursor, fl);
+        try
+        {
+            generateTabs(groupsCursor, fl);
+        }
+        finally 
+        {
+            groupsCursor.close();
+        }
         mTabHost.setCurrentTab(0);
         mTabHost.refreshDrawableState();
-		
 	}
 	
 	private int useID = 1234;
@@ -85,17 +88,26 @@ public class ContactsEvolved extends TabActivity {
 		lv.setId(useID++);
 		TabHost mTabHost = getTabHost();
 	
+		// TODO: Add icons on tops of at least system groups.
 		String useName = tabTitle;
 		useName = useName.replaceAll("System Group: ", "");
 		TabSpec useSpec = mTabHost.newTabSpec(tabTitle).setIndicator(useName).setContent(lv.getId());
 		
-
 		tabNames.add(tabTitle);
 		mTabHost.addTab(useSpec);
 	}
 	
-	
-
+    private final AdapterView.OnItemClickListener contactClickListener = new AdapterView.OnItemClickListener() 
+    {
+        public void onItemClick(AdapterView<?> parent, View v, int position, long dbidentifier)
+        {
+            // Seems to only fire when keyboard selected, not on touch event?
+            Uri viewContactURI = Uri.parse("content://contacts/people/" + dbidentifier);
+            Log.d("Stuff", String.valueOf(dbidentifier));
+            Intent myIntent = new Intent(Intent.ACTION_VIEW, viewContactURI);
+            startActivity(myIntent);
+        }
+    };
 	
 	private void generateTabs(Cursor groupsCursor, FrameLayout fl)
 	{
@@ -107,93 +119,91 @@ public class ContactsEvolved extends TabActivity {
 			int shown = 0;
 			do 
 			{
-				
 				String groupName = groupsCursor.getString(groupNameIndex);
+				boolean onlyGroup = groupsCursor.isLast() && shown == 0;
 				
-				
-				if(settings.getBoolean(groupName, true) == false && 
-					!(groupsCursor.isLast() == true && shown == 0))
+				if (settings.getBoolean(groupName, true) == false && !onlyGroup)
 				{
 					continue;
 				}
-				else
-				{
-					Log.d("generateTabs", "Tab to be generated: " + groupName);
-				}
+				
+				Log.d("generateTabs", "Tab to be generated: " + groupName);
 				shown++;
-				//Get cursor for Group Membership.  Filter for specific group from this iteration of the loop.
-
+				
                 ContactsListView lv = new ContactsListView(this);
-              	AdapterView.OnItemClickListener myListener = new AdapterView.OnItemClickListener()
-            	{
-
-                	   public void onItemClick(AdapterView<?> parent, View v, int position, long dbidentifier) 
-                	    {
-                	    	//Seems to only fire when keyboard selected, not on touch event?
-                	    	Uri viewContactURI = Uri.parse("content://contacts/people/" + dbidentifier);
-                	    	Log.d("Stuff", String.valueOf(dbidentifier));
-                	    	Intent myIntent = new Intent(Intent.ACTION_VIEW, viewContactURI);
-                	    	startActivity(myIntent);
-                	    	    	
-                	    }
-
-                	   
-                   };
-                   
-                lv.setOnItemClickListener(myListener);
+                lv.setOnItemClickListener(contactClickListener);
                 this.registerForContextMenu(lv);
                 
-                
-                
-                Uri useUri;
-            	useUri = getUserGroupUri(groupName);
-//            	useUri = getSystemGroupUri(groupName);
-                Cursor swankyCursor = managedQuery(useUri, null, null, null, People.NAME + " ASC");
-                Cursor loadImagesCursor = managedQuery(useUri, null, null, null, People.NAME + " ASC");
-                ContactsAdapter adapter = new ContactsAdapter(this,R.layout.contact_list_item,swankyCursor,new String[] {People.NAME,People.NUMBER}, new int[] 
-            		    {R.id.firstLine, R.id.secondLine}); 
-                adapter.loadPhotos(loadImagesCursor);
-                lv.setAdapter(adapter);
-
+                lv.setAdapter(createGroupContactsAdapter(groupName));
                 addTab(fl, lv, groupName);
 
 			} while (groupsCursor.moveToNext() && !groupsCursor.isAfterLast());
 		}
-		Log.d("Groups","DEBUG: Done loading groups");
-
+		else 
+		{
+            ContactsListView lv = new ContactsListView(this);
+            lv.setOnItemClickListener(contactClickListener);
+            this.registerForContextMenu(lv);
+            
+            lv.setAdapter(createGroupContactsAdapter(""));
+            addTab(fl, lv, "All contacts");
+		}
+		Log.d("Groups", "DEBUG: Done loading groups");
+	}
+	
+	private ContactsAdapter createGroupContactsAdapter(String groupName) 
+	{
+        // TODO: Move into ContactAdapter, in order to have cursor openet and closed in same function.
+        Uri useUri;
+        useUri = getUserGroupUri(groupName);
+//      useUri = getSystemGroupUri(groupName);
+        // TODO: Select only necessary fields.
+        Cursor loadImagesCursor = managedQuery(useUri, null, null, null, People.NAME + " ASC");
+        Cursor swankyCursor = managedQuery(useUri, 
+                new String[] {People.NAME, People.NUMBER}, //null, 
+                null, //People.NUMBER + " IS NOT NULL", 
+                null, People.NAME + " ASC");
+        try
+        {
+            ContactsAdapter adapter = new ContactsAdapter(
+                    this, R.layout.contact_list_item, swankyCursor, 
+                    new String[] {People.NAME, People.NUMBER}, new int[] 
+                    {R.id.firstLine, R.id.secondLine});
+            //TODO: Might be changed to iteration of contact infos.
+            adapter.loadPhotos(loadImagesCursor);
+            return adapter;
+        }
+        finally {
+            swankyCursor.close();
+        }
 	}
 
     private Uri getUserGroupUri(String groupName) {
+        if (groupName.length() == 0) {
+            return Uri.parse("content://contacts/people");
+        }
         return Uri.parse("content://contacts/groups/name/" + groupName + "/members");
     }
-
 	
 	private Cursor getGroupsCursor()
 	{
-
-		// Make the query. 
-		Cursor groupsCursor = managedQuery(Groups.CONTENT_URI,
-		                         null, // All columns 
-		                         null,       // All rows
-		                         null,     
-		                         // Put the results in ascending order by name
+		return managedQuery(Groups.CONTENT_URI,
+		                         null, // All columns
+		                         null, // All rows
+		                         null, // Put the results in ascending order by name
 		                         Groups.NAME + " ASC");
-		
-		return groupsCursor;
 	}
 
 	private Cursor getGroupCursorByName(String groupName)
 	{
 		Cursor groupsCursor = managedQuery(Groups.CONTENT_URI,
                 null, // Which columns to return 
-                Groups.NAME + " == '" + groupName + "'" ,       // Which rows to return (all rows)
-                null,       // Selection arguments (none)
-                // Put the results in ascending order by name
+                Groups.NAME + " == '" + groupName + "'" , // Which rows to return (all rows)
+                null, // Selection arguments (none)
                 Groups.NAME + " ASC");
 
 		
 		return groupsCursor;
-		
 	}
 	
 	public static final int ADD_GROUP = 0;
@@ -252,7 +262,6 @@ public class ContactsEvolved extends TabActivity {
 	public static final int DELETE_CONTACT_DIALOG = 5;
 
 	
-	
 	@Override
     protected Dialog onCreateDialog(int id) 
     {
@@ -260,256 +269,282 @@ public class ContactsEvolved extends TabActivity {
     	{
     		//Create a new group.  WILL SYNC.
 	    	case ADD_GROUP_DIALOG:
-	        LayoutInflater factory = LayoutInflater.from(this);
-	        final View textEntryView = factory.inflate(R.layout.alert_dialog_text_entry, null);
-	        return new AlertDialog.Builder(this)
-	            .setTitle("Add New Group")
-	            .setView(textEntryView)
-	            .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-	                public void onClick(DialogInterface dialog, int whichButton) 
-	                {
-	                	ContentValues values = new ContentValues();
-	
-	                	EditText et = (EditText) textEntryView.findViewById(R.id.groupname_edit);
-	                	values.put(Groups.NAME, et.getText().toString());
-	
-	                	getContentResolver().insert(Groups.CONTENT_URI, values);
-	                	setupTabs();
-	                }
-	            })
-	            .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-	                public void onClick(DialogInterface dialog, int whichButton) {
-	
-	                    // Placeholder.  Currently nothing to do when user hits cancel.
-	                }
-	            })
-	            .create();
+	    	    return createAddGroupDialog();
 	        //Delete a contact. WILL SYNC.
 	    	case DELETE_CONTACT_DIALOG:
-	    		AlertDialog.Builder dcBuilder = new AlertDialog.Builder(this);
-	    		dcBuilder.setMessage("Are you sure you want to delete this contact?")
-	    		       .setCancelable(false)
-	    		       .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-	    		           public void onClick(DialogInterface dialog, int id) 
-	    		           {
-
-	    		   		 	Uri personUri = ContentUris.withAppendedId(People.CONTENT_URI, deletePersonID);
-	    				 	Log.d("delete contact", "uri: " + personUri.toString());
-
-	    		            getApplicationContext().getContentResolver().delete(
-	    		                    ContentUris.withAppendedId(
-	    		                            Contacts.People.CONTENT_URI,
-	    		                            deletePersonID), null, null);
-	    		            deletePersonID = -1;
-	    		            setupTabs();
-	    		               
-	    		           }
-	    		       })
-	    		       .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-	    		           public void onClick(DialogInterface dialog, int id) 
-	    		           {
-	    		                dialog.cancel();
-	    		           }
-	    		       });
-	    		AlertDialog confirmContactDelete = dcBuilder.create();
-	    		return confirmContactDelete;
+	    	    return createConfirmDeleteDialog();
 	    		
 	    	//Delete a group from database.  WILL SYNC.
 	    	case DELETE_GROUP_DIALOG:
-	    		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-	    		builder.setMessage("Are you sure you want to delete this group?")
-	    		       .setCancelable(false)
-	    		       .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-	    		           public void onClick(DialogInterface dialog, int id) 
-	    		           {
-		    		       		long groupID = getCurrentGroupID();
-		    		       		if(groupID == -1)
-		    		       			return;
-		    		    		getContentResolver().delete(Groups.CONTENT_URI, Groups._ID + " == " + groupID, null);
-			                	setupTabs();
-	    		               
-	    		           }
-	    		       })
-	    		       .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-	    		           public void onClick(DialogInterface dialog, int id) 
-	    		           {
-	    		                dialog.cancel();
-	    		           }
-	    		       });
-	    		AlertDialog confirmDelete = builder.create();
-	    		return confirmDelete;
+                return createConfirmDeleteGroupDialog();
 	    	//Select which groups are currently visible.
 	    	case SELECT_GROUP_DIALOG:
-	    		Log.d("OnCreateDialog", "SELECT_GROUP_DIALOG case active");
-                AlertDialog.Builder sgBuilder = new AlertDialog.Builder(this)
-                .setTitle("Select groups to view")
-	    		       .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-	    		           public void onClick(DialogInterface dialog, int id) 
-	    		           {
-	    		               setupTabs();
-	    		           }
-	    		       })
-	    		       .setCancelable(true);
-                		Cursor c = getGroupsCursor();
-
-                		SharedPreferences settings = this.getSharedPreferences(SHOW_GROUPS, 0);
-                		Editor editor = settings.edit();
-                		
-                		int size = c.getCount();
-                		final CharSequence[] groups = new CharSequence[size];
-                		final boolean[] checkedArray = new boolean[size];
-			            
-			    		if (c.moveToFirst())
-			    		{
-			    			do 
-			    			{
-			    				String groupName = c.getString(c.getColumnIndex(Groups.NAME));
-			    				groups[c.getPosition()] = groupName;
-
-			    				if(!settings.contains(groupName))
-			    				{
-			    					editor.putBoolean(groupName, true);
-			    				}
-			    				
-			    				checkedArray[c.getPosition()] = settings.getBoolean(groupName, true);
-			    				
-			    			} while (c.moveToNext() && !c.isAfterLast());
-			    		}
-			    		editor.commit();
-			    		
-			    		
-
-			            sgBuilder.setMultiChoiceItems(groups, checkedArray, new DialogInterface.OnMultiChoiceClickListener() {
-			                public void onClick(DialogInterface dialog, int item, boolean checked) 
-			                {			                	
-			                	updateSelectedGroups(groups[item].toString(), checked);
-			                }
-			            });
-
-			            return sgBuilder.create();
+	    	    return createSelectGroupsDialog();
 
 			//Add an existing contact to a group. WILL SYNC.
 	    	case ADD_MEMBERSHIP_DIALOG:
-	    		
-                AlertDialog.Builder personGroupBuilder = new AlertDialog.Builder(this)
-                .setTitle("Add contact to group:")
-	    		       .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-	    		           public void onClick(DialogInterface dialog, int id) 
-	    		           {
-	    		        	   Log.d("add membership dialog", membershipPersonID + " adding to " + membershipGroupName);
-	    		        	   if(membershipGroupName.equals(Groups.GROUP_MY_CONTACTS))
-	    		        	   {
-	    		        		   People.addToMyContactsGroup(getContentResolver(), membershipPersonID);
-	    		        		   Toast.makeText(getApplicationContext(), "Added to My Contacts", Toast.LENGTH_SHORT);
-		    		        	   Log.d("add membership dialog", "if called");
-
-	    		        	   }
-	    		        	   else
-	    		        	   {
-	    		        		   Contacts.People.addToGroup(getContentResolver(), membershipPersonID, membershipGroupName);
-	    		        		   Toast.makeText(getApplicationContext(), "Added to " + membershipGroupName, Toast.LENGTH_SHORT);
-		    		        	   Log.d("add membership dialog", "else called");
-
-	    		        	   }
-	    		               membershipGroupName = null;
-	    		               membershipPersonID = -1;
-	    		               setupTabs();
-	    		           }
-	    		       })
-	    		       .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-	    		           public void onClick(DialogInterface dialog, int id) 
-	    		           {
-	    		                dialog.cancel();
-	    		           }
-	    		       })
-	    		       .setCancelable(true);
-                		Cursor allGroupsCursor = getGroupsCursor();
-                		int agcSize = allGroupsCursor.getCount();
-
-                		final CharSequence[] allGroups = new CharSequence[agcSize];
-			            
-			    		if (allGroupsCursor.moveToFirst())
-			    		{
-			    			do 
-			    			{
-			    				String groupName = allGroupsCursor.getString(allGroupsCursor.getColumnIndex(Groups.NAME));
-			    				allGroups[allGroupsCursor.getPosition()] = groupName;
-			    							    				
-			    			} while (allGroupsCursor.moveToNext() && !allGroupsCursor.isAfterLast());
-			    		}
-			    		
-			    		
-
-			    		personGroupBuilder.setSingleChoiceItems(allGroups, -1, new DialogInterface.OnClickListener() {
-			    		    public void onClick(DialogInterface dialog, int item) {
-			    		      
-			    		        membershipGroupName = (String) allGroups[item];
-			    		    }
-			    		});
-
-
-			            return personGroupBuilder.create();
+                return createAddMemebershipDialog();
 
 			//Remove a contact from a group. WILL SYNC.
 	    	case REMOVE_MEMBERSHIP_DIALOG:
-	    		
-                personGroupBuilder = new AlertDialog.Builder(this)
-                .setTitle("Remove contact from group:")
-	    		       .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-	    		           public void onClick(DialogInterface dialog, int id) 
-	    		           {
-
-	    		        	   if(membershipPersonID < 0 || membershipGroupName == null)
-	    		        	   {
-	    		        		   return;
-	    		        	   }
-	    		        	   long membershipID = getGroupMembershipID(membershipPersonID, membershipGroupName);
-	    		        	   removeGroupMembershipByID(membershipID);
-	    		        	   membershipGroupName = null;
-	    		               membershipPersonID = -1;
-	    		               setupTabs();
-	    		           }
-	    		       })
-	    		       .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-	    		           public void onClick(DialogInterface dialog, int id) 
-	    		           {
-	    		                dialog.cancel();
-	    		        		removeDialog(REMOVE_MEMBERSHIP_DIALOG);
-
-	    		           }
-	    		       })
-	    		       .setCancelable(true);
-                		Cursor currentGroupsCursor = People.queryGroups(getContentResolver(), membershipPersonID);
-                		int cgcSize = currentGroupsCursor.getCount();
-
-                		final CharSequence[] currentGroups = new CharSequence[cgcSize];
-			            
-			    		if (currentGroupsCursor.moveToFirst())
-			    		{
-			    			do 
-			    			{
-			    				String groupName = currentGroupsCursor.getString(currentGroupsCursor.getColumnIndex(Groups.NAME));
-			    				currentGroups[currentGroupsCursor.getPosition()] = groupName;
-			    							    				
-			    			} while (currentGroupsCursor.moveToNext() && !currentGroupsCursor.isAfterLast());
-			    		}
-			    		
-			    		
-
-			    		personGroupBuilder.setSingleChoiceItems(currentGroups, -1, new DialogInterface.OnClickListener() {
-			    		    public void onClick(DialogInterface dialog, int item) {
-
-			    		        membershipGroupName = (String) currentGroups[item];
-			    		    }
-			    		});
-
-
-			            return personGroupBuilder.create();
-			            
-			            
+                return createRemoveMemebershipDialog();
     	}
     	return null;
-    
+    }
+
+    private Dialog createRemoveMemebershipDialog()
+    {
+        AlertDialog.Builder personGroupBuilder;
+        personGroupBuilder = new AlertDialog.Builder(this)
+        .setTitle("Remove contact from group:")
+               .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                   public void onClick(DialogInterface dialog, int id) 
+                   {
+
+                	   if(membershipPersonID < 0 || membershipGroupName == null)
+                	   {
+                		   return;
+                	   }
+                	   long membershipID = getGroupMembershipID(membershipPersonID, membershipGroupName);
+                	   removeGroupMembershipByID(membershipID);
+                	   membershipGroupName = null;
+                       membershipPersonID = -1;
+                       setupTabs();
+                   }
+               })
+               .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                   public void onClick(DialogInterface dialog, int id) 
+                   {
+                        dialog.cancel();
+                		removeDialog(REMOVE_MEMBERSHIP_DIALOG);
+
+                   }
+               })
+               .setCancelable(true);
+        		Cursor currentGroupsCursor = People.queryGroups(getContentResolver(), membershipPersonID);
+        		int cgcSize = currentGroupsCursor.getCount();
+
+        		final CharSequence[] currentGroups = new CharSequence[cgcSize];
+                
+        		if (currentGroupsCursor.moveToFirst())
+        		{
+        			do 
+        			{
+        				String groupName = currentGroupsCursor.getString(currentGroupsCursor.getColumnIndex(Groups.NAME));
+        				currentGroups[currentGroupsCursor.getPosition()] = groupName;
+        							    				
+        			} while (currentGroupsCursor.moveToNext() && !currentGroupsCursor.isAfterLast());
+        		}
+        		
+        		
+
+        		personGroupBuilder.setSingleChoiceItems(currentGroups, -1, new DialogInterface.OnClickListener() {
+        		    public void onClick(DialogInterface dialog, int item) {
+
+        		        membershipGroupName = (String) currentGroups[item];
+        		    }
+        		});
+
+
+                return personGroupBuilder.create();
+    }
+
+    private Dialog createAddMemebershipDialog()
+    {
+        AlertDialog.Builder personGroupBuilder = new AlertDialog.Builder(this)
+        .setTitle("Add contact to group:")
+               .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                   public void onClick(DialogInterface dialog, int id) 
+                   {
+                	   Log.d("add membership dialog", membershipPersonID + " adding to " + membershipGroupName);
+                	   if(membershipGroupName.equals(Groups.GROUP_MY_CONTACTS))
+                	   {
+                		   People.addToMyContactsGroup(getContentResolver(), membershipPersonID);
+                		   Toast.makeText(getApplicationContext(), "Added to My Contacts", Toast.LENGTH_SHORT);
+        	        	   Log.d("add membership dialog", "if called");
+
+                	   }
+                	   else
+                	   {
+                		   Contacts.People.addToGroup(getContentResolver(), membershipPersonID, membershipGroupName);
+                		   Toast.makeText(getApplicationContext(), "Added to " + membershipGroupName, Toast.LENGTH_SHORT);
+        	        	   Log.d("add membership dialog", "else called");
+
+                	   }
+                       membershipGroupName = null;
+                       membershipPersonID = -1;
+                       setupTabs();
+                   }
+               })
+               .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                   public void onClick(DialogInterface dialog, int id) 
+                   {
+                        dialog.cancel();
+                   }
+               })
+               .setCancelable(true);
+        		Cursor allGroupsCursor = getGroupsCursor();
+        		int agcSize = allGroupsCursor.getCount();
+
+        		final CharSequence[] allGroups = new CharSequence[agcSize];
+                
+        		if (allGroupsCursor.moveToFirst())
+        		{
+        			do 
+        			{
+        				String groupName = allGroupsCursor.getString(allGroupsCursor.getColumnIndex(Groups.NAME));
+        				allGroups[allGroupsCursor.getPosition()] = groupName;
+        							    				
+        			} while (allGroupsCursor.moveToNext() && !allGroupsCursor.isAfterLast());
+        		}
+        		
+        		
+
+        		personGroupBuilder.setSingleChoiceItems(allGroups, -1, new DialogInterface.OnClickListener() {
+        		    public void onClick(DialogInterface dialog, int item) {
+        		      
+        		        membershipGroupName = (String) allGroups[item];
+        		    }
+        		});
+
+
+                return personGroupBuilder.create();
+    }
+
+    private Dialog createSelectGroupsDialog()
+    {
+        Log.d("OnCreateDialog", "SELECT_GROUP_DIALOG case active");
+        AlertDialog.Builder sgBuilder = new AlertDialog.Builder(this)
+        .setTitle("Select groups to view")
+               .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                   public void onClick(DialogInterface dialog, int id) 
+                   {
+                       setupTabs();
+                   }
+               })
+               .setCancelable(true);
+        		Cursor c = getGroupsCursor();
+
+        		SharedPreferences settings = this.getSharedPreferences(SHOW_GROUPS, 0);
+        		Editor editor = settings.edit();
+        		
+        		int size = c.getCount();
+        		final CharSequence[] groups = new CharSequence[size];
+        		final boolean[] checkedArray = new boolean[size];
+                
+        		if (c.moveToFirst())
+        		{
+        			do 
+        			{
+        				String groupName = c.getString(c.getColumnIndex(Groups.NAME));
+        				groups[c.getPosition()] = groupName;
+
+        				if(!settings.contains(groupName))
+        				{
+        					editor.putBoolean(groupName, true);
+        				}
+        				
+        				checkedArray[c.getPosition()] = settings.getBoolean(groupName, true);
+        				
+        			} while (c.moveToNext() && !c.isAfterLast());
+        		}
+        		editor.commit();
+        		
+        		
+
+                sgBuilder.setMultiChoiceItems(groups, checkedArray, new DialogInterface.OnMultiChoiceClickListener() {
+                    public void onClick(DialogInterface dialog, int item, boolean checked) 
+                    {			                	
+                    	updateSelectedGroups(groups[item].toString(), checked);
+                    }
+                });
+
+                return sgBuilder.create();
+    }
+
+    private Dialog createConfirmDeleteGroupDialog()
+    {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setMessage("Are you sure you want to delete this group?")
+               .setCancelable(false)
+               .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                   public void onClick(DialogInterface dialog, int id) 
+                   {
+        	       		long groupID = getCurrentGroupID();
+        	       		if(groupID == -1)
+        	       			return;
+        	    		getContentResolver().delete(Groups.CONTENT_URI, Groups._ID + " == " + groupID, null);
+                    	setupTabs();
+                       
+                   }
+               })
+               .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                   public void onClick(DialogInterface dialog, int id) 
+                   {
+                        dialog.cancel();
+                   }
+               });
+        AlertDialog confirmDelete = builder.create();
+        return confirmDelete;
+    }
+
+    private Dialog createConfirmDeleteDialog()
+    {
+        AlertDialog.Builder dcBuilder = new AlertDialog.Builder(this);
+        dcBuilder.setMessage("Are you sure you want to delete this contact?")
+               .setCancelable(false)
+               .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                   public void onClick(DialogInterface dialog, int id) 
+                   {
+
+           		 	Uri personUri = ContentUris.withAppendedId(People.CONTENT_URI, deletePersonID);
+        		 	Log.d("delete contact", "uri: " + personUri.toString());
+
+                    getApplicationContext().getContentResolver().delete(
+                            ContentUris.withAppendedId(
+                                    Contacts.People.CONTENT_URI,
+                                    deletePersonID), null, null);
+                    deletePersonID = -1;
+                    setupTabs();
+                       
+                   }
+               })
+               .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                   public void onClick(DialogInterface dialog, int id) 
+                   {
+                        dialog.cancel();
+                   }
+               });
+        AlertDialog confirmContactDelete = dcBuilder.create();
+        return confirmContactDelete;
+    }
+
+    private Dialog createAddGroupDialog()
+    {
+        LayoutInflater factory = LayoutInflater.from(this);
+        final View textEntryView = factory.inflate(R.layout.alert_dialog_text_entry, null);
+        return new AlertDialog.Builder(this)
+            .setTitle("Add New Group")
+            .setView(textEntryView)
+            .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) 
+                {
+                	ContentValues values = new ContentValues();
+
+                	EditText et = (EditText) textEntryView.findViewById(R.id.groupname_edit);
+                	values.put(Groups.NAME, et.getText().toString());
+
+                	getContentResolver().insert(Groups.CONTENT_URI, values);
+                	setupTabs();
+                }
+            })
+            .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int whichButton) {
+
+                    // Placeholder.  Currently nothing to do when user hits cancel.
+                }
+            })
+            .create();
     }
 
     public void updateSelectedGroups(String key, boolean value)
@@ -532,8 +567,6 @@ public class ContactsEvolved extends TabActivity {
 		 	menu.add(0, DELETE_CONTACT, 0,  "Delete Contact");
 		 	menu.add(0, ADD_GROUP_MEMBERSHIP, 0, "Add to Group");
 		 	menu.add(0, REMOVE_GROUP_MEMBERSHIP, 0, "Remove from Group");
-
-
 	 }
 
 	 public boolean onContextItemSelected(MenuItem item) 
@@ -590,9 +623,6 @@ public class ContactsEvolved extends TabActivity {
 	 }
 	 
 	 
-
-
-	 
 	 private long deletePersonID = -1;
 	 private void deleteContact(View v,long personID)
 	 {
@@ -605,8 +635,6 @@ public class ContactsEvolved extends TabActivity {
 	 	Intent myIntent = new Intent(Contacts.Intents.Insert.ACTION, People.CONTENT_URI);
     	this.startActivityForResult(myIntent, GET_NEW_CONTACT_ACODE);
 	 }
-	 
-	 
 	 
 	 final static int GET_NEW_CONTACT_ACODE = 1;
 	 final static int EDIT_CONTACT_ACODE = 2;
@@ -652,7 +680,6 @@ public class ContactsEvolved extends TabActivity {
 	   }
 	   setupTabs(); 
 	}
- 
  
  
 	public long getGroupMembershipID(long contactID, String groupName) 

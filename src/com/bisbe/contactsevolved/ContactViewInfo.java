@@ -24,6 +24,7 @@ class ContactViewInfo
 
     private int personID;
     private String phone;
+    private String name;
     
     public ContactViewInfo(ContactsAdapter adapter) 
     {
@@ -33,14 +34,14 @@ class ContactViewInfo
     public void setPersonID(int personID)
     {
         this.personID = personID;
-        if (!adapter.personPhotos.containsKey(personID))
+        if (!ContactsAdapter.personPhotos.containsKey(personID))
         {
             Uri personUri = ContentUris.withAppendedId(Contacts.People.CONTENT_URI, personID);
-            adapter.personPhotos.put(personID, Contacts.People.loadContactPhoto(
+            ContactsAdapter.personPhotos.put(personID, Contacts.People.loadContactPhoto(
                     adapter.context, personUri, 0, null));
         }
 
-        Bitmap photo = adapter.personPhotos.get(personID);
+        Bitmap photo = ContactsAdapter.personPhotos.get(personID);
         contactPhotoView.setImageBitmap(photo);        
     }
 
@@ -83,6 +84,18 @@ class ContactViewInfo
 
     public String getPhone() {
         return phone;
+    }
+    
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+        this.nameLabel.setText(name);
+        if (name == null || name.length() == 0) {
+            this.nameLabel.setText(phone);            
+        }
     }
     
     public Uri getContactViewUri() 

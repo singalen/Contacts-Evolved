@@ -12,194 +12,129 @@ import android.net.Uri;
 import android.provider.Contacts;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
-public class ContactsAdapter extends SimpleCursorAdapter implements View.OnClickListener
+public class ContactsAdapter extends SimpleCursorAdapter implements
+        View.OnClickListener
 {
 
-	Activity context;
-	public static HashMap<Integer, Bitmap> personPhotos;
-	
-	public ContactsAdapter(Context context, int layout, Cursor c,
-			String[] from, int[] to) 
-	{
-		super(context, layout, c, from, to);
-		this.context = (Activity)context;
-		if(personPhotos == null)
-		{
-			personPhotos = new HashMap<Integer, Bitmap>();
-		}
-	}
+    Activity context;
+    public static HashMap<Integer, Bitmap> personPhotos;
 
-	public void loadPhotos(Cursor useCursor)
-	{
-		final Cursor c = useCursor;
-    	Thread thread = new Thread() {
-    		@Override
-    		public void run() {
-    			//TODO : set imageView to a "pending" image
-    			if(c.moveToFirst())
-    			{
-    				do
-    				{
-						 int personIdIndex = c.getColumnIndex(Contacts.People._ID);
-						 int personId = c.getInt(personIdIndex);
-				 
-						 Uri personUri = ContentUris.withAppendedId(
-				                 Contacts.People.CONTENT_URI, personId);
-
-    					 if(!personPhotos.containsKey(personId))
-    					 {
-    						 Bitmap photo = Contacts.People.loadContactPhoto(context, personUri, 0, null);
-    						 personPhotos.put(personId,photo);
-    					 }
-    					
-    				}
-    				while(c.moveToNext());
-    				c.close();
-    			}
-    		}
-    	};
-    	thread.start();
-	}
-
-	 public class ViewHolder
-	 {
-		 ImageView contactPhotoView;
-		 TextView nameLabel;
-		 TextView phoneLabel;		 
-
-		 ImageView callButton;
-		 String personID;
-	 }
-
-    public void onClick(View v) 
+    public ContactsAdapter(Context context, int layout, Cursor c,
+            String[] from, int[] to)
     {
-        // do something when the button is clicked
-    	String pid = ((ViewHolder)(v.getTag())).personID;
-    	Uri viewContactURI = Uri.parse("content://contacts/people/" + pid);
-    	Intent myIntent = new Intent(Intent.ACTION_VIEW, viewContactURI); 
-
-    	v.getContext().startActivity(myIntent);
-    	
+        super(context, layout, c, from, to);
+        this.context = (Activity) context;
+        if (personPhotos == null)
+        {
+            personPhotos = new HashMap<Integer, Bitmap>();
+        }
     }
-	
-	
-	
-	
-	 @Override
-	 public View getView(int position, View convertView, ViewGroup parent) 
-	 {
-		 
-		 Cursor c = getCursor();
-		 c.moveToPosition(position);
-		 
-		 ViewHolder holder;
-		 if (convertView == null) 
-		 {
-			 convertView = View.inflate(context, R.layout.contact_list_item, null);
-			 holder = new ViewHolder();
-			 holder.contactPhotoView = (ImageView) (convertView.findViewById(R.id.contactImage));
-			 holder.nameLabel=(TextView)(convertView.findViewById(R.id.firstLine));
-			 holder.phoneLabel=(TextView)(convertView.findViewById(R.id.secondLine));
-	         holder.callButton = (ImageView) (convertView.findViewById(R.id.callButton));
-			 convertView.setTag(holder);
-		 } 
-		 else 
-		 {
-			 holder = (ViewHolder) convertView.getTag();
-		 }
 
+    public void loadPhotos(Cursor useCursor)
+    {
+        final Cursor c = useCursor;
+        Thread thread = new Thread() {
+            @Override
+            public void run()
+            {
+                // TODO : set imageView to a "pending" image
+                if (c.moveToFirst())
+                {
+                    do
+                    {
+                        int personIdIndex = c.getColumnIndex(Contacts.People._ID);
+                        int personId = c.getInt(personIdIndex);
 
-		 int personIdIndex = c.getColumnIndex(Contacts.People._ID);
-		 int personId = c.getInt(personIdIndex);
- 
-		 Uri personUri = ContentUris.withAppendedId(
-                 Contacts.People.CONTENT_URI, personId);
+                        Uri personUri = ContentUris.withAppendedId(
+                                Contacts.People.CONTENT_URI, personId);
 
-		 //Set Photo
-		 
-		 if(!personPhotos.containsKey(personId))
-		 {
-			 personPhotos.put(personId,Contacts.People.loadContactPhoto(context, personUri, 0, null));
-		 }
+                        if (!personPhotos.containsKey(personId))
+                        {
+                            Bitmap photo = Contacts.People.loadContactPhoto(context, personUri, 0, null);
+                            personPhotos.put(personId, photo);
+                        }
 
-	     Bitmap photo = personPhotos.get(personId);
-	     holder.contactPhotoView.setImageBitmap(photo);
-		 
-		 //Set Name Label
-         int nameIndex = c.getColumnIndex(Contacts.People.NAME);
-         String name = c.getString(nameIndex);
-         holder.nameLabel.setText(name); 
+                    } while (c.moveToNext());
+                }
+                c.close();
+            }
+        };
+        thread.start();
+    }
 
-		 //Set Phone Number Label
-		 int phoneIndex = c.getColumnIndex(Contacts.People.NUMBER);
-         String phone = c.getString(phoneIndex);
+    public void onClick(View v)
+    {
+        ContactViewInfo contact = (ContactViewInfo) v.getTag();
+        Intent myIntent = new Intent(Intent.ACTION_VIEW, contact.getContactViewUri());
+        v.getContext().startActivity(myIntent);
+    }
 
-         if(phone != null && phone.length() > 0)
-         {
-        	 holder.phoneLabel.setText(phone);
-        	 holder.callButton.setVisibility(View.VISIBLE);
-         }
-         else
-         {
-        	 holder.phoneLabel.setText("");
-        	 holder.callButton.setVisibility(View.INVISIBLE);
-        	 
-         }
+    private View assignConvertViewContact(View convertView)
+    {
+        ContactViewInfo contact;
+        if (convertView == null)
+        {
+            convertView = View.inflate(context, R.layout.contact_list_item, null);
+            contact = new ContactViewInfo(this);
+            contact.contactPhotoView = (ImageView) (convertView.findViewById(R.id.contactImage));
+            contact.nameLabel = (TextView) (convertView.findViewById(R.id.firstLine));
+            contact.phoneLabel = (TextView) (convertView.findViewById(R.id.secondLine));
+            contact.callButton = (ImageView) (convertView.findViewById(R.id.callButton));
+            convertView.setTag(contact);
+        }
+        else
+        {
+            contact = (ContactViewInfo) convertView.getTag();
+        }
 
-         convertView.setBackgroundResource(android.R.drawable.menuitem_background); 
-         
-         String personID = c.getString(c.getColumnIndex(Contacts.People._ID));
-         AdapterView.AdapterContextMenuInfo menuInfo = (AdapterView.AdapterContextMenuInfo) ((ContactsContentLayout)convertView).getContextMenuInfo();
+        return convertView;
+    }
 
-         if(((ContactsContentLayout)convertView).getContextMenuInfo() == null)
-         {
-        	 menuInfo = new AdapterView.AdapterContextMenuInfo(convertView, position, personId);
-         }
-         else
-         {
-        	 menuInfo.targetView = convertView;
-        	 menuInfo.position = position;
-        	 menuInfo.id = personId;
-         }
-         ((ContactsContentLayout)convertView).setContextMenuInfo(menuInfo);
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent)
+    {
+        Cursor contactsCursor = getCursor();
+        contactsCursor.moveToPosition(position);
 
-         
-        holder.personID = personID;
-    	
-    	if(phone != null && phone.length() > 0)
-    	{
-    		
-            holder.callButton.setImageResource(R.drawable.badge_action_call);
-            
-            holder.callButton.setBackgroundResource(android.R.drawable.menuitem_background);
-            holder.callButton.setTag(phone);
+        convertView = assignConvertViewContact(convertView);
+        ContactViewInfo contact = (ContactViewInfo) convertView.getTag();
 
-            OnClickListener callContactListener = new OnClickListener()
-	    	{
-	    	    public void onClick(View v) 
-	    	    {
-	    	        // do something when the button is clicked
+        int personIdIndex = contactsCursor.getColumnIndex(Contacts.People._ID);
+        int personId = contactsCursor.getInt(personIdIndex);
+        contact.setPersonID(personId);
 
-	    	    	Uri callContactURI = Uri.parse("tel:" + (String)v.getTag());
-	    	    	Intent myIntent = new Intent(Intent.ACTION_CALL, callContactURI);
+        int nameIndex = contactsCursor.getColumnIndex(Contacts.People.NAME);
+        String name = contactsCursor.getString(nameIndex);
+        contact.setName(name);
 
-	    	    	v.getContext().startActivity(myIntent);
-	    	    	
-	    	    }
-	    	};
+        int phoneIndex = contactsCursor.getColumnIndex(Contacts.People.NUMBER);
+        String phone = contactsCursor.getString(phoneIndex);
+        contact.setPhone(phone);
 
-	    	holder.callButton.setOnClickListener(callContactListener);
-    	}
-    	else
-    	{
-    			holder.callButton.setImageDrawable(null);
-    	}
-        return(convertView);
-	 }
+        convertView.setBackgroundResource(android.R.drawable.menuitem_background);
+
+        AdapterView.AdapterContextMenuInfo menuInfo = 
+            (AdapterView.AdapterContextMenuInfo) ((ContactsContentLayout) convertView).getContextMenuInfo();
+
+        if (menuInfo == null)
+        {
+            menuInfo = new AdapterView.AdapterContextMenuInfo(convertView, position, personId);
+        }
+        else
+        {
+            menuInfo.targetView = convertView;
+            menuInfo.position = position;
+            menuInfo.id = personId;
+        }
+        // TODO: If we already have contact saved in convertView, we probably don't have to save menu to it.
+        // Just recreate it there.
+        ((ContactsContentLayout) convertView).setContextMenuInfo(menuInfo);
+
+        return convertView;
+    }
 }
