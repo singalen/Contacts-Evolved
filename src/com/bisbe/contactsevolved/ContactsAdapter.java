@@ -10,6 +10,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.provider.Contacts;
+import android.provider.Contacts.People;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -20,19 +21,47 @@ import android.widget.TextView;
 public class ContactsAdapter extends SimpleCursorAdapter implements
         View.OnClickListener
 {
+    public Activity context;
+    private String groupName;
+    private boolean loaded = false;
+    public static HashMap<Integer, Bitmap> personPhotos = new HashMap<Integer, Bitmap>();
 
-    Activity context;
-    public static HashMap<Integer, Bitmap> personPhotos;
-
-    public ContactsAdapter(Context context, int layout, Cursor c,
-            String[] from, int[] to)
+    public ContactsAdapter(Context context, int layout, String groupName)
     {
-        super(context, layout, c, from, to);
+        super(context, layout, createGroupCursor(groupName, (Activity) context), 
+                new String[] {People.NAME, People.NUMBER}, 
+                new int[] {R.id.firstLine, R.id.secondLine});
         this.context = (Activity) context;
-        if (personPhotos == null)
-        {
-            personPhotos = new HashMap<Integer, Bitmap>();
+        this.groupName = groupName;
+        loadContacts();
+    }
+    
+    public void loadContacts() {
+        if(loaded) return;
+        
+        Uri useUri;
+        useUri = getUserGroupUri(groupName);
+//      useUri = getSystemGroupUri(groupName);
+
+        // TODO: Select only necessary fields.
+        Cursor loadImagesCursor = context.managedQuery(useUri, null, null, null, People.NAME + " ASC");
+        this.loadPhotos(loadImagesCursor);
+    }
+    
+    private static Uri getUserGroupUri(String groupName) {
+        if (groupName.length() == 0) {
+            return Uri.parse("content://contacts/people");
         }
+        return Uri.parse("content://contacts/groups/name/" + groupName + "/members");
+    }
+    
+    private static Cursor createGroupCursor(String groupName, Activity context) {
+        Uri useUri = getUserGroupUri(groupName);
+        Cursor swankyCursor = context.managedQuery(useUri, 
+                null, //new String[] {People.NAME, People.NUMBER}, //null, 
+                null, //People.NUMBER + " IS NOT NULL", 
+                null, People.NAME + " ASC");
+        return swankyCursor;
     }
 
     public void loadPhotos(Cursor useCursor)
@@ -62,6 +91,7 @@ public class ContactsAdapter extends SimpleCursorAdapter implements
                     } while (c.moveToNext());
                 }
                 c.close();
+                loaded = true;
             }
         };
         thread.start();

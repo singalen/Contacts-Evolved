@@ -29,7 +29,6 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.TabHost;
 import android.widget.Toast;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.TabHost.TabSpec;
@@ -56,13 +55,10 @@ public class ContactsEvolved extends TabActivity {
 		removeDialog(REMOVE_MEMBERSHIP_DIALOG);
 		removeDialog(ADD_MEMBERSHIP_DIALOG);
 
-		TabHost mTabHost = getTabHost();
-        if(mTabHost.getChildCount() > 0)
-        {
-        	mTabHost.setCurrentTab(0);
-        	mTabHost.clearAllTabs();
-        }
-        mTabHost = getTabHost(); // TODO: WTF?..
+		getTabHost().setVisibility(View.GONE);
+        //http://code.google.com/p/android/issues/detail?id=2772#c8
+        damnClearTabs();
+        //mTabHost = getTabHost(); // TODO: WTF?..
 
         FrameLayout fl = (FrameLayout) findViewById(android.R.id.tabcontent);
         Cursor groupsCursor = getGroupsCursor();
@@ -74,27 +70,47 @@ public class ContactsEvolved extends TabActivity {
         {
             groupsCursor.close();
         }
-        mTabHost.setCurrentTab(0);
-        mTabHost.refreshDrawableState();
+        getTabHost().setCurrentTab(0);
+        getTabHost().setVisibility(View.VISIBLE);
+        getTabHost().refreshDrawableState();
 	}
+
+    private void damnClearTabs()
+    {
+        if(getTabHost().getChildCount() > 0)
+        {
+            getTabHost().setCurrentTab(-1);
+            getTabHost().clearAllTabs();
+        }
+    }
 	
 	private int useID = 1234;
 	private ArrayList<String> tabNames;
-	private void addTab(FrameLayout fl, ContactsListView lv, String tabTitle)
+	
+	private ArrayList<String> getTabNames() {
+        if(tabNames == null) tabNames = new ArrayList<String>();
+        return tabNames;
+	}
+	
+	private void addTab(FrameLayout fl, String groupName)
 	{
-		if(tabNames == null)
-			tabNames = new ArrayList<String>();
+        ContactsListView lv = new ContactsListView(this);
+        lv.setOnItemClickListener(contactClickListener);
+        this.registerForContextMenu(lv);
+        
+        lv.setAdapter(new ContactsAdapter(this, R.layout.contact_list_item, groupName));
+        //lv.setAdapter(createGroupContactsAdapter(groupName));
+		
 		fl.addView(lv);
 		lv.setId(useID++);
-		TabHost mTabHost = getTabHost();
 	
 		// TODO: Add icons on tops of at least system groups.
-		String useName = tabTitle;
+		String useName = groupName.length() == 0 ? "All contacts" : groupName;
 		useName = useName.replaceAll("System Group: ", "");
-		TabSpec useSpec = mTabHost.newTabSpec(tabTitle).setIndicator(useName).setContent(lv.getId());
+		TabSpec useSpec = getTabHost().newTabSpec(groupName).setIndicator(useName).setContent(lv.getId());
 		
-		tabNames.add(tabTitle);
-		mTabHost.addTab(useSpec);
+		getTabNames().add(groupName);
+		getTabHost().addTab(useSpec);
 	}
 	
     private final AdapterView.OnItemClickListener contactClickListener = new AdapterView.OnItemClickListener() 
@@ -130,60 +146,16 @@ public class ContactsEvolved extends TabActivity {
 				Log.d("generateTabs", "Tab to be generated: " + groupName);
 				shown++;
 				
-                ContactsListView lv = new ContactsListView(this);
-                lv.setOnItemClickListener(contactClickListener);
-                this.registerForContextMenu(lv);
-                
-                lv.setAdapter(createGroupContactsAdapter(groupName));
-                addTab(fl, lv, groupName);
+                addTab(fl, groupName);
 
 			} while (groupsCursor.moveToNext() && !groupsCursor.isAfterLast());
 		}
 		else 
 		{
-            ContactsListView lv = new ContactsListView(this);
-            lv.setOnItemClickListener(contactClickListener);
-            this.registerForContextMenu(lv);
-            
-            lv.setAdapter(createGroupContactsAdapter(""));
-            addTab(fl, lv, "All contacts");
+            addTab(fl, "");
 		}
 		Log.d("Groups", "DEBUG: Done loading groups");
 	}
-	
-	private ContactsAdapter createGroupContactsAdapter(String groupName) 
-	{
-        // TODO: Move into ContactAdapter, in order to have cursor openet and closed in same function.
-        Uri useUri;
-        useUri = getUserGroupUri(groupName);
-//      useUri = getSystemGroupUri(groupName);
-        // TODO: Select only necessary fields.
-        Cursor loadImagesCursor = managedQuery(useUri, null, null, null, People.NAME + " ASC");
-        Cursor swankyCursor = managedQuery(useUri, 
-                new String[] {People.NAME, People.NUMBER}, //null, 
-                null, //People.NUMBER + " IS NOT NULL", 
-                null, People.NAME + " ASC");
-        try
-        {
-            ContactsAdapter adapter = new ContactsAdapter(
-                    this, R.layout.contact_list_item, swankyCursor, 
-                    new String[] {People.NAME, People.NUMBER}, new int[] 
-                    {R.id.firstLine, R.id.secondLine});
-            //TODO: Might be changed to iteration of contact infos.
-            adapter.loadPhotos(loadImagesCursor);
-            return adapter;
-        }
-        finally {
-            swankyCursor.close();
-        }
-	}
-
-    private Uri getUserGroupUri(String groupName) {
-        if (groupName.length() == 0) {
-            return Uri.parse("content://contacts/people");
-        }
-        return Uri.parse("content://contacts/groups/name/" + groupName + "/members");
-    }
 	
 	private Cursor getGroupsCursor()
 	{

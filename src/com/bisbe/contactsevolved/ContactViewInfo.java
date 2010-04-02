@@ -1,6 +1,3 @@
-/**
- * 
- */
 package com.bisbe.contactsevolved;
 
 import android.content.ContentUris;
